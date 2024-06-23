@@ -15,13 +15,17 @@ router.get("/", async (req, res, next) => {
 router.get("/:code", async (req, res, next) => {
   try {
     const { code } = req.params;
-    const result = await db.query(`SELECT * FROM companies WHERE code=$1`, [
+    const cResult = await db.query(`SELECT * FROM companies WHERE code=$1`, [
       code,
     ]);
-    if (result.rows.length === 0) {
+    const iResult = await db.query(
+      `SELECT * FROM invoices WHERE comp_code=$1`,
+      [code]
+    );
+    if (cResult.rows.length === 0) {
       throw new ExpressError("Invalid Code name", 404);
     }
-    return res.json({ company: result.rows[0] });
+    return res.json({ company: cResult.rows[0], invoices: iResult.rows });
   } catch (e) {
     return next(e);
   }
