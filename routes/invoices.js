@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ExpressError = require("../expressError");
 const db = require("../db");
+const date = new Date();
 
 router.get("/", async (req, res, next) => {
   try {
@@ -41,16 +42,34 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const IDToPut = req.params.id;
-    const { amt } = req.body;
-    const result = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2`, [
-      amt,
+    const { amt, paid } = req.body;
+    let paidDate = null;
+
+    const currResult = await db.query(`SELECT paid FROM invoices WHERE id=$1`, [
       IDToPut,
     ]);
-    if (result.rows.length === 0) {
-      throw new ExpressError(`User with id ${id} is Not Found`, 404);
+    if (currResult.rows[0].length === 0) {
+      throw new ExpressError(`Invoice with id:#${IDToPut} is not registered`);
     }
+
+    const currPaidDate = currResult.rows[0].paid_date;
+
+    if (!currPaidDate && paid) {
+      paidDate = new Date();
+    } else if (!paid) {
+      paidDate = null;
+    } else {
+      paidDate = currPaidDate;
+    }
+
+    const result = await db.query(
+      `UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING *`,
+      [amt, paid, date, IDToPut]
+    );
+
     return res.json({ invoice: result.rows[0] });
   } catch (e) {
+    console.log(e);
     return next(e);
   }
 });
